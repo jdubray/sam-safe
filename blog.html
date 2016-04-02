@@ -87,6 +87,18 @@
 		// This sample was inspired from @rajaraodv
 		// https://medium.com/@rajaraodv/a-guide-for-building-a-react-redux-crud-app-7fe0b8943d0f#.e7501tdde
 
+        function dispatch(data) {
+            // client side
+            //model.present(data) ;
+
+            // server side
+            $.post( "http://localhost:5425/app/v1/dispatch", data) 
+            .done(function( representation ) {
+                $( "#representation" ).html( representation );
+            }        
+            );
+        }
+
 		function present(data) {
 			// client side
 			//model.present(data) ;
@@ -102,6 +114,8 @@
 		function init() {
 			// client side
 			//view.display(view.init(model)) ;
+
+            actions.do = dispatch 
 
 			// server side
 			$.get( "http://localhost:5425/app/v1/init", function( data ) {

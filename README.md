@@ -37,3 +37,8 @@ A session manager can be plugged into SAFE to manage session rehydration/hydrati
 ### Allowed Actions
 
 Currently SAFE can be used enforce global action authorization (not yet session based)
+
+### Action Hang Back
+
+SAFE supports a mode where the client can call multiple allowed actions in a given step. The first one to present its values "wins" and prevents any other 
+action to present its values to the model
