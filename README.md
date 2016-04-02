@@ -28,7 +28,36 @@ safe.init(actions,model,state,view) ;
 
 ### Dispatcher
 
-The dispatcher can be used to simplify the invocation of the server-side actions from the client's event handlers
+The dispatcher can be used to simplify the invocation of the server-side actions from the client's event handlers.
+
+On the server, the dispatcher is activated via a simple call where apis.dispatch is the path you assign to the dispatcher (server-model.js):
+
+```
+safe.dispatcher(app,apis.dispatch) ;
+```
+
+In your client, add a simple dispatcher function (blog.html):
+```
+function dispatch(data) {
+    
+    // invoke SAFE's dispatcher
+    $.post( "http://localhost:5425/app/v1/dispatch", data) 
+    .done(function( representation ) {
+        $( "#representation" ).html( representation );
+    }        
+    );
+}
+
+```
+
+then route all your actions to the dispatcher (blog.js) and add the __action property to your dataset:
+```
+actions.save = (data) => {
+    data.__action = 'save' ;
+    actions.do(data) ; 
+    return false ;
+} ;
+```
 
 ### Session Management
 
@@ -38,7 +67,7 @@ A session manager can be plugged into SAFE to manage session rehydration/hydrati
 
 Currently SAFE can be used enforce global action authorization (not yet session based)
 
-### Action Hang Back
+### Action Hang Back 
 
 SAM inherently supports a mode where the client can call multiple allowed actions in a given step. With SAFE, the first one to present its values "wins" and prevents any other action to present its values to the model.
 
