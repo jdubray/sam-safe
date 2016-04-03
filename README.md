@@ -6,9 +6,9 @@ SAFE implements the following services
   - session dehydration / hydration
   - enforces allowed actions and action hang back
   - logging
+  - server side time travel
 
 Coming up
-  - server side time travel
   - caching (idempotent actions)
 
 ## Usage
@@ -17,7 +17,11 @@ The SAM pattern can be deployed with [a variety of topologies](http://sam.js.org
 
 SAFE can be used to wire the SAM elements
 ```
-var actions = null ; // no actions running on the server
+// note that actions can also implemented on the client
+// in which case the value would be null
+// var actions = null 
+
+var actions = require('./actions') ;  
 var model = require('./model') ;
 var view = require('./view') ;
 var state = require('./state') ;
@@ -93,3 +97,30 @@ actions.save = (data,next) => {
 
 When you modify a blog entry and you hit save, the action will present its data 9s later. If you hit cancel before the save action presents its values to the model, then the save action will be prevented from presenting its actions to the
 model.
+
+### Time Travel
+
+Time Travel is a developer tool that allows you to put back the application state as it was in a given step. This approach was popularized by Dan Abramov
+as part of the Redux framework. However, in Redux time travel works only on the client while in SAFE it can run both on the client or server.
+
+```
+// Time Travel is initialized in a couple of lines (server-model.js)
+
+var myTimeTraveler = safe.defaultTimeTraveler() ; // or your implementation
+safe.initTimeTraveler(myTimeTraveler) ;
+
+// add the express route to access the model versions
+myTimeTraveler.init(app,your_path_to_timetravel_snapshots) ;
+
+// SAFE's implements an in memory defaultSnapShotStore, which you can
+replace with your own, including a persistent one...
+```
+
+SAFE's defautTimeTravel implementation adds a "Time Travel" component to all state representations. 
+![]()
+
+You can also access the time travel store via a simple api:
+
+Return all snapshots: `http://localhost:5425/dev/v1/timetravel/snapshots/`
+Return a single snapshot: `http://localhost:5425/dev/v1/timetravel/snapshots/{index}`
+

@@ -157,6 +157,12 @@ safe.defaultTimeTraveler = (store) => {
                 
             }) ;
             
+            app.get(path, function(req,res) { 
+                
+                display(res,JSON.stringify(safe.getSnapshot())) ;
+                
+            }) ;
+            
             // travel back
             app.post(path+'/:snapshot', function(req,res) { 
                 
@@ -168,13 +174,10 @@ safe.defaultTimeTraveler = (store) => {
                 let index = req.params.snapshot ;
                 
                 if (index>=0) {
-                    console.log('__________________ time travel __________________') ;
-                    console.log(index) ;
                     let snapshot = snapshotStore.retrieve(index) ;
                     if ((index>=0) && (index<snapshotStore.length())) {
                         cursor = index ;
                     } 
-                    console.log(snapshot) ;
                     let m = safe.deepCopy(snapshot.store) ;
                     m.__token = req.cookies['safe_token'] || '' ;
                     let methods = Object.getOwnPropertyNames(safe.model).filter(function (p) {
@@ -212,7 +215,7 @@ safe.defaultTimeTraveler = (store) => {
         },
         
         getSnapshot: (i) => {
-            i = i || cursor ;
+            i = i || -1 ;
             
             if (i>=0) { 
                 return snapshotStore.retrieve(i); 
