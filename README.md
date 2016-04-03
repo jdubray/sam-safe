@@ -4,7 +4,7 @@ SAFE implements the following services
   - element wiring
   - action dispatcher 
   - session dehydration / hydration
-  - enforces allowed actions
+  - enforces allowed actions and action hang back
   - logging
 
 Coming up

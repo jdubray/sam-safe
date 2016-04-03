@@ -7,6 +7,7 @@
   "dependencies": {
     "async": "*",
     "body-parser": "*",
+    "chai": "^3.5.0",
     "compression": "1.6.0",
     "cookie-parser": "",
     "cron": "1.0.x",
@@ -15,8 +16,8 @@
     "he": "*",
     "http-proxy": "1.12.x",
     "memcached": "2.2.x",
-    "node-cache": "3.0.x", 
     "morgan": "1.6.x",
+    "node-cache": "3.0.x",
     "node-uuid": "*",
     "nodemailer": "1.8.0",
     "nodemailer-smtp-pool": "*",

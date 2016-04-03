@@ -43,6 +43,10 @@ console.log(actions) ;
 
 safe.init(actions,model,state,view) ;
 
+// use default time traveler
+var myTimeTraveler = safe.defaultTimeTraveler() ;
+safe.initTimeTraveler(myTimeTraveler) ;
+
 var config = {} ;
 config.port = 5425 ;
 config.loginKey = 'abcdef0123456789' ;
@@ -119,19 +123,22 @@ app.use('/html', express.static(config.adminDirectory));
 
 var v = '/v1' ;
 var r = 'app' ;
+var d = 'dev' ;
 var a = 'api' ;
 var apis = {
     login: '/'+r+v+'/login',
     logout: '/'+r+v+'/logout',
     present: '/'+r+v+'/present',
     init: '/'+r+v+'/init',
-    dispatch: '/'+r+v+'/dispatch'
+    dispatch: '/'+r+v+'/dispatch',
+    timetravel: '/'+d+v+'/timetravel/snapshots'
 } ;
 
 
 // var postman = require('./postman') ;
 
 // postman.addAPI(r, 'login', config.loginKey) ;
+
 app.post(apis.login,function(req,res) { 
     var username = req.body.username,
         password = req.body.password ;
@@ -147,6 +154,7 @@ app.post(apis.login,function(req,res) {
 }) ;
 
 // postman.addAPI(r, 'logout', config.loginKey) ;
+
 app.get(apis.logout,function(req,res) { 
     authnz.del(req,res,'authorized') ;
     res.status(200).send({authorized:false}) ;
@@ -169,11 +177,20 @@ app.post(apis.present,function(req,res) {
 //postman.addAPI(r, 'init', config.loginKey) ;
 
 app.get(apis.init,function(req,res) { 
-    console.log(view) ;
+    // Store initial snapshot
+    myTimeTraveler.saveSnapshot(model,{}) ;
+    
     res.status(200).send(view.init(model)) ;
 }) ;
 
+// add SAFE's APIs
+
 safe.dispatcher(app,apis.dispatch) ;
+
+myTimeTraveler.init(app,apis.timetravel) ;
+
+
+// start application 
 
 app.listen(config.port, function() {
     console.log("registering app on port: "+config.port) ;

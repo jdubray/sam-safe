@@ -36,7 +36,7 @@
 //  - action dispatcher 
 //  - action hang back
 //  - session dehydration / hydration
-//  - enforces allowed actions
+//  - enforces allowed actions and action "hang back"
 //  - logging
 //
 //  TODO
@@ -49,8 +49,6 @@
 // import { saveSnapshot, getSnapshot } from './timeTravelStore.js'  ;
 
 let safe = {} ;
-
-
 
 
 // minimal service implementations
@@ -95,14 +93,153 @@ safe.defaultLogger = {
     loggingLevel: 0
 } ;
 
+// error handler
+
 safe.defaultErrorHandler = (message) => {
    safe.logger.error(message) ; 
+} ;
+
+// default in memory store for time travel 
+
+safe.defaultSnapshotStore = (function() {
+    let store = [] ;
+    
+    return {
+        
+        store: (i,s) => {
+            store[i] = s ;
+            return store.length ;
+        },
+        
+        retrieve: (i) => {
+            if ((i>=0) && (i<store.length)) {
+                
+                return store[i] ;
+                
+            } else {
+                
+                return {} ;
+                
+            }
+        },
+        
+        retrieveAll: () => {
+            return store ;
+        },
+        
+        length: () => {
+            return store.length ;
+        }
+    } ;
+    
+})() ;
+
+// time traveler
+
+safe.defaultTimeTraveler = (store) => {
+    let snapshotStore = store || safe.defaultSnapshotStore ;
+    let cursor = -1 ;
+    let display =(res,representation) => {
+        res.status(200).send(representation) ;
+    } ; 
+    return {
+        init: (app,path, next) => {
+            
+            // substitute default response function with next
+            display = next || display ;
+            
+            // API : returns a given snapshot or all if index is negative 
+            app.get(path+'/:snapshot', function(req,res) { 
+                
+                let index = req.params.snapshot ;
+                
+                display(res,JSON.stringify(safe.getSnapshot(index))) ;
+                
+            }) ;
+            
+            // travel back
+            app.post(path+'/:snapshot', function(req,res) { 
+                
+                let dis = (representation) => {
+                    let resp = res ;
+                    display(resp,representation) ;
+                }
+                
+                let index = req.params.snapshot ;
+                
+                if (index>=0) {
+                    console.log('__________________ time travel __________________') ;
+                    console.log(index) ;
+                    let snapshot = snapshotStore.retrieve(index) ;
+                    if ((index>=0) && (index<snapshotStore.length())) {
+                        cursor = index ;
+                    } 
+                    console.log(snapshot) ;
+                    let m = safe.deepCopy(snapshot.store) ;
+                    m.__token = req.cookies['safe_token'] || '' ;
+                    let methods = Object.getOwnPropertyNames(safe.model).filter(function (p) {
+                        return typeof safe.model[p] === 'function';
+                    }) ;
+                    methods = methods.map( function(name) {
+                        return safe.model[name] ;
+                    });
+
+                    safe.model = safe.deepCopy(m) ;
+                    
+                    methods.forEach(function(method) {
+                        safe.model[method.name] = method ;
+                    });
+                    
+                    safe.render(safe.model,dis,false) ;
+                }
+            }) ;
+        },
+        
+        saveSnapshot: (model,dataset) => {
+            let snapshot = snapshotStore.retrieve(cursor) ;
+            if (dataset) {
+                cursor++ ;
+                snapshot = {} ;
+                snapshot.dataset = safe.deepCopy(dataset) ;
+            }
+            
+            if (model) {
+                snapshot.store = safe.deepCopy(model) ;
+            } 
+            
+            return snapshotStore.store(cursor,snapshot) ;
+            
+        },
+        
+        getSnapshot: (i) => {
+            i = i || cursor ;
+            
+            if (i>=0) { 
+                return snapshotStore.retrieve(i); 
+            } else {
+                return snapshotStore.retrieveAll() ;
+            }
+        },
+        
+        displayTimeTravelControls: (representation) => {
+            
+            return (representation + 
+            '          <br>\n<br>\n<hr>\n<div class="mdl-cell mdl-cell--6-col">\n'+
+            '                      <input id="__snapshot" type="text" class="form-control"><br>\n'+
+            '                      <button id="__travel" onclick="JavaScript:return travel({\'snapshot\':document.getElementById(\'__snapshot\').value});"> TimeTravel </button>\n'+
+            '          </div><br><br>\n') ;
+        }
+        
+        
+    } ;
 } ;
 
 
 // SAFE Core
 
-safe.init = (actions, model, state, view, logger, errorHandler, sessionManager, timeTraveler) => {
+// Insert SAFE middleware and wire SAM components
+
+safe.init = (actions, model, state, view, logger, errorHandler, sessionManager) => {
     
     safe.actions = actions ;
     safe.model = model ;
@@ -119,11 +256,6 @@ safe.init = (actions, model, state, view, logger, errorHandler, sessionManager, 
     safe.lastStep = safe.newStep(safe.stepCount) ;
     
     safe.sessionManager = sessionManager || safe.defaultSessionManager ;
-    
-    if (timeTraveler) {
-        safe.saveSnapshot = timeTraveler.saveSnapshot ;
-        safe.getSnapshot = timeTraveler.getSnapshot ;
-    } 
     
     safe.allowedActions = null ;
     
@@ -152,8 +284,16 @@ safe.init = (actions, model, state, view, logger, errorHandler, sessionManager, 
     }
 } ;
 
+safe.initTimeTraveler = (timeTraveler) => {
+    if (timeTraveler) {
+        safe.saveSnapshot = timeTraveler.saveSnapshot || null ;
+        safe.getSnapshot = timeTraveler.getSnapshot || null ;
+        safe.displayTimeTravelControls = timeTraveler.displayTimeTravelControls || null ;
+    } 
+} ;
 
-// Insert SAFE middleware and wire SAM components
+// The Dispatcher is an optional component which 
+// exposes a dispatch API 
 
 safe.dispatcher = (app,path,next) => {
     // assumes express cookie-parser middleware
@@ -164,14 +304,15 @@ safe.dispatcher = (app,path,next) => {
                     } ;
         var data = req.body ;
         
-        safe.logger.info(req.body) ;
-
         data.__token = req.cookies['safe_token'] || '' ;
         
         safe.dispatch(data.__action,data,next || ret) ;
     }) ;
     
 } ;
+
+// The dispatch method decides whether an action can be dispatched
+// based on SAFE's context
 
 safe.dispatch = (action,data,next) => {
     data = data || {} ;
@@ -201,17 +342,16 @@ safe.dispatch = (action,data,next) => {
     if (!dispatch) {
         safe.errorHandler({action: action, error: "not allowed"}) ;
     } else {
-        var invoked = false ;
             
         if (safe.actions[action] !== undefined) {
             
             // dispatch action
             safe.logger.info('invoking action            '+JSON.stringify(data)) ;
             safe.actions[action](data,next) ;
-            invoked = true ;
-        } 
-        
-        if (!invoked) { safe.errorHandler({action: action, error: "not found"}) ;  }
+           
+        } else { 
+            safe.errorHandler({action: action, error: "not found"}) ;  
+        }
         
     }
 
@@ -240,7 +380,10 @@ safe.present = (data,next) => {
                 safe.model.__token = data._token ;
                 
             }
-            
+            if (safe.saveSnapshot) {
+                // Store snapshot in TimeTravel
+                safe.saveSnapshot(null,data) ;
+            }
             safe.model.present(data,next) ;
         } else {
             // unexpected actions
@@ -250,18 +393,6 @@ safe.present = (data,next) => {
         // ignore action's effect
         safe.logger({blocked: true,data}) ;
     }    
-} ;
-
-safe.render = (model,next) => {
-    safe.allowedActions = safe.state.representation(model,next) || [] ;
-    safe.unblock() ;
-    safe.lastStep = safe.newStep(safe.stepCount++, safe.allowedActions)
-    safe.sessionManager.dehydrateSession(model) ;
-    safe.state.nextAction(model) ;
-} ;
-
-safe.display = (representation,next) => {
-    safe.view.display(representation,next) ;
 } ;
 
 safe.block = () => {
@@ -286,6 +417,31 @@ safe.newStep = (uid,allowedActions) => {
     safe.logger.info('new step        :'+JSON.stringify(step)) ;
     return step ;
 } ;
+
+safe.render = (model,next, takeSnapShot) => {
+    takeSnapShot = takeSnapShot || true ;
+    if (takeSnapShot && safe.saveSnapshot) {
+        // Store snapshot in TimeTravel
+        safe.saveSnapshot(model,null) ;
+    }
+    safe.allowedActions = safe.state.representation(model,next) || [] ;
+    safe.unblock() ;
+    safe.lastStep = safe.newStep(safe.stepCount++, safe.allowedActions) ;
+    safe.sessionManager.dehydrateSession(model) ;
+    safe.state.nextAction(model) ;
+} ;
+
+safe.display = (representation,next) => {
+    if (safe.displayTimeTravelControls) {
+        representation = safe.displayTimeTravelControls(representation) ;
+    }
+    safe.view.display(representation,next) ;
+} ;
+
+safe.deepCopy = function(x) {
+    return JSON.parse(JSON.stringify(x)) ;
+} ;
+
 
 
 
