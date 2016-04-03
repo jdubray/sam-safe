@@ -152,13 +152,13 @@ safe.defaultTimeTraveler = (store) => {
             app.get(path+'/:snapshot', function(req,res) { 
                 
                 let index = req.params.snapshot ;
-                
+                res.setHeader("Content-Type", "application/json");
                 display(res,JSON.stringify(safe.getSnapshot(index))) ;
                 
             }) ;
             
             app.get(path, function(req,res) { 
-                
+                res.setHeader("Content-Type", "application/json") ;
                 display(res,JSON.stringify(safe.getSnapshot())) ;
                 
             }) ;
@@ -180,17 +180,19 @@ safe.defaultTimeTraveler = (store) => {
                     } 
                     let m = safe.deepCopy(snapshot.store) ;
                     m.__token = req.cookies['safe_token'] || '' ;
-                    let methods = Object.getOwnPropertyNames(safe.model).filter(function (p) {
-                        return typeof safe.model[p] === 'function';
-                    }) ;
-                    methods = methods.map( function(name) {
-                        return safe.model[name] ;
-                    });
-
-                    safe.model = safe.deepCopy(m) ;
                     
-                    methods.forEach(function(method) {
-                        safe.model[method.name] = method ;
+                    let modelProperties = Object.getOwnPropertyNames(safe.model).filter(function (p) {
+                        return typeof safe.model[p] !== 'function';
+                    }) ;
+                    
+                    let snapShotProperties = Object.getOwnPropertyNames(m) ;
+                    
+                    modelProperties.forEach(function(p) {
+                        delete safe.model[p] ;
+                    });
+                    
+                    snapShotProperties.forEach(function(p) {
+                       safe.model[p] = m[p] ; 
                     });
                     
                     safe.render(safe.model,dis,false) ;
