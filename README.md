@@ -122,5 +122,6 @@ SAFE's defautTimeTravel implementation adds a "Time Travel" component to all sta
 You can also access the time travel store via a simple api:
 
 Return all snapshots: `http://localhost:5425/dev/v1/timetravel/snapshots/`
+
 Return a single snapshot: `http://localhost:5425/dev/v1/timetravel/snapshots/{index}`
 
