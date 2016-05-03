@@ -1,8 +1,8 @@
 {
-  "name": "ebpml.org",
+  "name": "sam-safe middleware with blog sample harness",
   "version": "1.0.0",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server-model.js"
   },
   "dependencies": {
     "body-parser": "*",
