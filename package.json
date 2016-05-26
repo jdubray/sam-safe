@@ -1,5 +1,6 @@
 {
-  "name": "sam-safe middleware with blog sample harness",
+  "name": "sam-safe",
+  "description": "sam-safe middleware with blog sample harness",
   "version": "1.0.0",
   "scripts": {
     "start": "node server-model.js"

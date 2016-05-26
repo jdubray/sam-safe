@@ -11,7 +11,18 @@ SAFE implements the following services
 Coming up
   - caching (idempotent actions)
 
-## Usage
+## Running the sample
+
+You should run a version of node up to v5.11.1. SAFE is not incompatible with v6 but other libraries that the sample is using might.
+
+```
+npm install
+node server-model
+```
+
+then use Chrome to open the file (not all browsers support some of the ES6 features used): blog.html
+
+## SAFE Usage
 
 The SAM pattern can be deployed with [a variety of topologies](http://sam.js.org/#iso). The blog sample implements its Actions on the client, while the Model and the State are implemented on the server.
 
