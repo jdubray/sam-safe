@@ -128,7 +128,7 @@ replace with your own, including a persistent one...
 ```
 
 SAFE's defautTimeTravel implementation adds a "Time Travel" component to all state representations. 
-![timetravel](https://github.com/jdubray/sam-safe/blob/master/timetravel.jpg)
+![timetravel](https://github.com/jdubray/sam-safe/blob/master/timetravel.jpg?raw=true)
 
 You can also access the time travel store via a simple api:
 
